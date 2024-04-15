@@ -14,7 +14,7 @@
   "author": "Michael Cohen",
   "license": "ISC",
   "dependencies": {
-    "@nlpjs/request": "^4.25.0",
+    "axios": "^1.6.8",
     "bluebird": "3.3.4",
     "date-fns": "^2.9.0",
     "fast-xml-parser": "^4.3.2",

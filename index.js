@@ -6,7 +6,8 @@
  * @copyright 2014 Michael Cohen
  */
 
-var { request } = require("@nlpjs/request");
+var axios = require("axios");
+const qs = require("querystring");
 var uuid = require("uuid"),
   debug = require("request-debug"),
   util = require("util"),
@@ -43,7 +44,7 @@ var OAUTH_ENDPOINTS = {
 
   "2.0": function (callback, discoveryUrl) {
     var NEW_ENDPOINT_CONFIGURATION = {};
-    request(
+    axios(
       {
         url: discoveryUrl,
         headers: {
@@ -161,13 +162,14 @@ QuickBooks.prototype.refreshAccessToken = function (callback) {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: "Basic " + auth,
     },
-    form: {
+    data: qs.stringify({
       grant_type: "refresh_token",
       refresh_token: this.refreshToken,
-    },
+    }),
+    method: "post",
   };
 
-  request.post(
+  axios(
     postBody,
     function (e, r, data) {
       if (r && r.body && r.error !== "invalid_grant") {
@@ -200,12 +202,13 @@ QuickBooks.prototype.revokeAccess = function (useRefresh, callback) {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: "Basic " + auth,
     },
-    form: {
+    data: qs.stringify({
       token: revokeToken,
-    },
+    }),
+    method: "post",
   };
 
-  request.post(
+  axios(
     postBody,
     function (e, r, data) {
       if (r && r.statusCode === 200) {
@@ -2553,25 +2556,25 @@ module.request = function (context, verb, options, entity, callback) {
   }
   var opts = {
     url: url,
-    qs: options.qs || {},
+    params: options.qs || {},
     headers: options.headers || {},
-    json: true,
+    responseType: "json",
   };
 
   if (entity && entity.allowDuplicateDocNum) {
     delete entity.allowDuplicateDocNum;
-    opts.qs.include = "allowduplicatedocnum";
+    opts.params.include = "allowduplicatedocnum";
   }
 
   if (entity && entity.requestId) {
-    opts.qs.requestid = entity.requestId;
+    opts.params.requestid = entity.requestId;
     delete entity.requestId;
   }
 
-  opts.qs.minorversion = opts.qs.minorversion || context.minorversion;
+  opts.params.minorversion = opts.params.minorversion || context.minorversion;
   opts.headers["User-Agent"] = "node-quickbooks: version " + version;
   opts.headers["Request-Id"] = uuid.v1();
-  opts.qs.format = "json";
+  opts.params.format = "json";
   if (context.oauthversion == "2.0") {
     opts.headers["Authorization"] = "Bearer " + context.token;
   } else {
@@ -2579,37 +2582,33 @@ module.request = function (context, verb, options, entity, callback) {
   }
   if (options.url.match(/pdf$/)) {
     opts.headers["accept"] = "application/pdf";
-    opts.encoding = null;
+    opts.responseEncoding = null;
   }
   if (entity !== null) {
-    opts.body = entity;
+    opts.data = entity;
   }
   if (options.formData) {
-    opts.formData = options.formData;
+    opts.data = options.formData;
   }
   if ("production" !== process.env.NODE_ENV && context.debug) {
-    debug(request);
+    debug(opts);
   }
-  request[verb].call(context, opts, function (err, res, body) {
-    if ("production" !== process.env.NODE_ENV && context.debug) {
-      console.log("invoking endpoint: " + url);
-      console.log(entity || "");
-      console.log(JSON.stringify(body, null, 2));
-    }
-    if (callback) {
-      if (
-        err ||
-        res.statusCode >= 300 ||
-        (_.isObject(body) &&
-          body.Fault &&
-          body.Fault.Error &&
-          body.Fault.Error.length) ||
-        (_.isString(body) && !_.isEmpty(body) && body.indexOf("<") === 0)
-      ) {
-        callback(err || body, body, res);
-      } else {
-        callback(null, body, res);
-      }
+
+  axios({
+    method: verb,
+    ...opts,
+  }).then(({ data: body, status }) => {
+    if (
+      status >= 300 ||
+      (_.isObject(body) &&
+        body.Fault &&
+        body.Fault.Error &&
+        body.Fault.Error.length) ||
+      (_.isString(body) && !_.isEmpty(body) && body.indexOf("<") === 0)
+    ) {
+      callback(body, body, res);
+    } else {
+      callback(null, body, res);
     }
   });
 };
