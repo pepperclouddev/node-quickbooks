@@ -144,84 +144,6 @@ function QuickBooks(
 }
 
 /**
- *
- * Use the refresh token to obtain a new access token.
- *
- *
- */
-
-QuickBooks.prototype.refreshAccessToken = function (callback) {
-  var auth = Buffer.from(this.consumerKey + ":" + this.consumerSecret).toString(
-    "base64"
-  );
-
-  var postBody = {
-    url: QuickBooks.TOKEN_URL,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: "Basic " + auth,
-    },
-    data: qs.stringify({
-      grant_type: "refresh_token",
-      refresh_token: this.refreshToken,
-    }),
-    method: "post",
-  };
-
-  axios(
-    postBody,
-    function (e, r, data) {
-      if (r && r.body && r.error !== "invalid_grant") {
-        var refreshResponse = JSON.parse(r.body);
-        this.refreshToken = refreshResponse.refresh_token;
-        this.token = refreshResponse.access_token;
-        if (callback) callback(e, refreshResponse);
-      } else {
-        if (callback) callback(e, r, data);
-      }
-    }.bind(this)
-  );
-};
-
-/**
- * Use either refresh token or access token to revoke access (OAuth2).
- *
- * @param useRefresh - boolean - Indicates which token to use: true to use the refresh token, false to use the access token.
- * @param {function} callback - Callback function to call with error/response/data results.
- */
-QuickBooks.prototype.revokeAccess = function (useRefresh, callback) {
-  var auth = Buffer.from(this.consumerKey + ":" + this.consumerSecret).toString(
-    "base64"
-  );
-  var revokeToken = useRefresh ? this.refreshToken : this.token;
-  var postBody = {
-    url: QuickBooks.REVOKE_URL,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: "Basic " + auth,
-    },
-    data: qs.stringify({
-      token: revokeToken,
-    }),
-    method: "post",
-  };
-
-  axios(
-    postBody,
-    function (e, r, data) {
-      if (r && r.statusCode === 200) {
-        this.refreshToken = null;
-        this.token = null;
-        this.realmId = null;
-      }
-      if (callback) callback(e, r, data);
-    }.bind(this)
-  );
-};
-
-/**
  * Get user info (OAuth2).
  *
  * @param {function} callback - Callback function to call with error/response/data results.
@@ -2597,20 +2519,24 @@ module.request = function (context, verb, options, entity, callback) {
   axios({
     method: verb,
     ...opts,
-  }).then(({ data: body, status }) => {
-    if (
-      status >= 300 ||
-      (_.isObject(body) &&
-        body.Fault &&
-        body.Fault.Error &&
-        body.Fault.Error.length) ||
-      (_.isString(body) && !_.isEmpty(body) && body.indexOf("<") === 0)
-    ) {
-      callback(body, body, res);
-    } else {
-      callback(null, body, res);
-    }
-  });
+  })
+    .then(({ data: body, status }) => {
+      if (
+        status >= 300 ||
+        (_.isObject(body) &&
+          body.Fault &&
+          body.Fault.Error &&
+          body.Fault.Error.length) ||
+        (_.isString(body) && !_.isEmpty(body) && body.indexOf("<") === 0)
+      ) {
+        callback(body, body);
+      } else {
+        callback(null, body);
+      }
+    })
+    .catch((err) => {
+      callback(err);
+    });
 };
 
 module.xmlRequest = function (context, url, rootTag, callback) {
