@@ -6,8 +6,8 @@
  * @copyright 2014 Michael Cohen
  */
 
-var request = require("@nlpjs/request"),
-  uuid = require("uuid"),
+var { request } = require("@nlpjs/request");
+var uuid = require("uuid"),
   debug = require("request-debug"),
   util = require("util"),
   formatISO = require("date-fns/fp/formatISO"),
