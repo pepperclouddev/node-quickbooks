@@ -6,7 +6,7 @@
  * @copyright 2014 Michael Cohen
  */
 
-var axios = require("axios"),
+var request = require("@nlpjs/request"),
   uuid = require("uuid"),
   debug = require("request-debug"),
   util = require("util"),
@@ -167,7 +167,7 @@ QuickBooks.prototype.refreshAccessToken = function (callback) {
     },
   };
 
-  axios.post(
+  request.post(
     postBody,
     function (e, r, data) {
       if (r && r.body && r.error !== "invalid_grant") {
@@ -205,7 +205,7 @@ QuickBooks.prototype.revokeAccess = function (useRefresh, callback) {
     },
   };
 
-  axios.post(
+  request.post(
     postBody,
     function (e, r, data) {
       if (r && r.statusCode === 200) {
@@ -2590,7 +2590,7 @@ module.request = function (context, verb, options, entity, callback) {
   if ("production" !== process.env.NODE_ENV && context.debug) {
     debug(request);
   }
-  axios[verb].call(context, opts, function (err, res, body) {
+  request[verb].call(context, opts, function (err, res, body) {
     if ("production" !== process.env.NODE_ENV && context.debug) {
       console.log("invoking endpoint: " + url);
       console.log(entity || "");
