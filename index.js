@@ -2504,7 +2504,7 @@ module.request = function (context, verb, options, entity, callback) {
   }
   if (options.url.match(/pdf$/)) {
     opts.headers["accept"] = "application/pdf";
-    opts.responseEncoding = null;
+    opts.responseType = "arraybuffer";
   }
   if (entity !== null) {
     opts.data = entity;
